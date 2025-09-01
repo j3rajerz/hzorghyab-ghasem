@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سامانه ثبت حضور و غیاب</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css"/>
+<style>
+body {margin:0; font-family:'Vazirmatn', sans-serif; background: linear-gradient(180deg, #000 0%, #111 100%); color:#fff; text-align:center;}
+.hidden {display:none;}
+.container {padding:20px;}
+.glass-card {background: rgba(255, 255, 255, 0.08); border-radius:12px; border:1px solid rgba(255,165,0,0.6); box-shadow:0 0 10px rgba(255,165,0,0.6); padding:15px; margin:12px 0;}
+input, button, select, textarea {width:90%; padding:10px; margin:10px 0; border-radius:8px; border:none; outline:none; font-size:1em;}
+input, textarea, select {background: rgba(0,0,0,0.5); color:#fff; border:1px solid rgba(255,165,0,0.5); box-shadow:0 0 6px rgba(255,165,0,0.6);}
+button {background:orange; color:black; font-weight:bold; box-shadow:0 0 10px orange; cursor:pointer;}
+button:hover {background:#ffb733;}
+h1,h2 {color:orange; text-shadow:0 0 8px orange;}
+.menu-btn {display:block; width:100%; margin:8px 0;}
+.back-btn {background:transparent; color:orange; border:1px solid orange; box-shadow:none; margin-top:15px;}
+.report-item {padding:10px; border-bottom:1px solid rgba(255,165,0,0.4); text-align:right;}
+#headerLogo {
+  text-align: center;
+  margin: 10px 0 20px 0;
+}
+
+#headerLogo img {
+  height: 60px;   /* اندازه لوگو */
+  object-fit: contain;
+}
+</style>
+</head>
+<body>
+    <!-- لوگوی بالای همه صفحات -->
+<div id="headerLogo">
+  <img src="logo.png" alt="لوگو" />
+</div>
+
+<!-- صفحه ورود -->
+<div id="loginPage" class="container">
+<h1>سامانه ثبت حضور و غیاب</h1>
+<div class="glass-card">
+<input id="username" placeholder="نام کاربری" />
+<input id="password" type="password" placeholder="رمز عبور" />
+<button onclick="login()">ورود</button>
+</div>
+</div>
+
+<!-- منوی اصلی -->
+<div id="menuPage" class="container hidden">
+<h2>منوی اصلی</h2>
+<button class="menu-btn" onclick="showPage('eventsPage')">📌 ثبت وقایع</button>
+<button class="menu-btn" onclick="showPage('reportsPage')">📑 گزارشات ثبت‌شده</button>
+<button class="menu-btn" onclick="showPage('exportPage')">📊 خروجی اکسل / CSV</button>
+<button class="menu-btn" onclick="showPage('profilePage')">👤 پروفایل کاربر</button>
+<button class="menu-btn" onclick="showPage('logoutPage')">🚪 خروج از سیستم</button>
+</div>
+
+<!-- ثبت وقایع -->
+<div id="eventsPage" class="container hidden">
+<h2>ثبت وقایع</h2>
+<div class="glass-card">
+<input id="empName" placeholder="نام و نام خانوادگی کارمند" />
+<input id="empCode" placeholder="شماره پرسنلی" />
+<input id="eventDate" class="persian-date" placeholder="تاریخ شمسی" />
+<select id="eventType">
+<option value="ورود">ورود</option>
+<option value="خروج">خروج</option>
+</select>
+<input id="eventTime" class="persian-time" placeholder="انتخاب ساعت" />
+<textarea id="description" placeholder="توضیحات / دلیل"></textarea>
+<button onclick="saveEvent()">ثبت</button>
+<button class="back-btn" onclick="backToMenu()">بازگشت</button>
+</div>
+</div>
+
+<!-- گزارشات -->
+<div id="reportsPage" class="container hidden">
+<h2>گزارشات ثبت‌شده</h2>
+<div class="glass-card">
+<input id="searchName" placeholder="نام یا شماره پرسنلی" />
+<input id="fromDate" class="persian-date" placeholder="از تاریخ" />
+<input id="toDate" class="persian-date" placeholder="تا تاریخ" />
+<button onclick="searchReports()">جستجو</button>
+<button onclick="exportToExcel()">📥 دانلود اکسل</button>
+<div id="reportResults" class="glass-card"></div>
+<button class="back-btn" onclick="backToMenu()">بازگشت</button>
+</div>
+</div>
+
+<!-- خروجی -->
+<div id="exportPage" class="container hidden">
+<h2>خروجی</h2>
+<div class="glass-card">
+<select id="exportType">
+<option value="تکی">تکی</option>
+<option value="گروهی">گروهی</option>
+</select>
+<input id="expFrom" class="persian-date" placeholder="از تاریخ" />
+<input id="expTo" class="persian-date" placeholder="تا تاریخ" />
+<input id="expEmp" placeholder="نام یا شماره پرسنلی" />
+<button>📄 دانلود CSV</button>
+<button>📊 دانلود Excel</button>
+<button class="back-btn" onclick="backToMenu()">بازگشت</button>
+</div>
+</div>
+
+<!-- پروفایل -->
+<div id="profilePage" class="container hidden">
+<h2>پروفایل کاربر</h2>
+<div class="glass-card">
+<p>👤 نام کاربری: <span id="profileName">عباس</span></p>
+<p>🔢 شماره پرسنلی: <span id="profileCode">1335</span></p>
+<button>تغییر رمز</button>
+<button class="back-btn" onclick="backToMenu()">بازگشت</button>
+</div>
+</div>
+
+<!-- خروج -->
+<div id="logoutPage" class="container hidden">
+<h2>خروج از سیستم</h2>
+<div class="glass-card">
+<p>آیا مایل به خروج هستید؟</p>
+<button onclick="logout()">بله</button>
+<button class="back-btn" onclick="backToMenu()">خیر</button>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/persian-date@1.1.0/dist/persian-date.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script>
+const users=[{username:"عباس",password:"1335"}];
+let events=[];
+
+function login(){
+  const u=document.getElementById("username").value;
+  const p=document.getElementById("password").value;
+  const user=users.find(x=>x.username===u&&x.password===p);
+  if(user){showPage("menuPage");}
+  else{alert("نام کاربری یا رمز اشتباه است");}
+}
+
+function showPage(id){
+  document.querySelectorAll(".container").forEach(p=>p.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+
+  if(id === "eventsPage"){
+    // فعال‌سازی انتخاب تاریخ شمسی
+    $("#eventDate").persianDatepicker({
+      format: 'YYYY/MM/DD',
+      autoClose: true,
+      initialValue: true
+    });
+
+    // فعال‌سازی انتخاب ساعت (شبیه آیفون)
+    $("#eventTime").persianDatepicker({
+      format: "HH:mm",
+      autoClose: true,
+      onlyTimePicker: true,
+      initialValue: false
+    });
+
+    // باز شدن خودکار تقویم تاریخ
+    setTimeout(()=>{ $("#eventDate").focus(); }, 300);
+
+    // باز شدن خودکار انتخاب ساعت (بعد از تاریخ)
+    setTimeout(()=>{ $("#eventTime").focus(); }, 800);
+  }
+}
+function toEnglishDigits(str){
+  if(!str) return "";
+  return str.replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d));
+}
+
+
+
+function backToMenu(){showPage("menuPage");}
+function normalizeDate(dateStr){
+  if(!dateStr) return "";
+  // تبدیل اعداد فارسی به انگلیسی
+  const eng = toEnglishDigits(dateStr);
+  const parts = eng.split("/");
+  if(parts.length !== 3) return "";
+  const y = parts[0];
+  const m = parts[1].padStart(2,"0");
+  const d = parts[2].padStart(2,"0");
+  return `${y}/${m}/${d}`;
+}
+
+function saveEvent(){
+  const date = normalizeDate($("#eventDate").val());
+
+  const event = {
+    name: document.getElementById("empName").value.trim(),
+    code: document.getElementById("empCode").value.trim(),
+    date: date,
+    type: document.getElementById("eventType").value,
+    time: document.getElementById("eventTime").value.trim(),
+    desc: document.getElementById("description").value.trim()
+  };
+
+  console.log("DEBUG event:", event);
+
+  if(!event.name || !event.code || !event.date || !event.time){
+    alert("لطفاً همه فیلدهای ضروری را پر کنید!");
+    return;
+  }
+
+  events.push(event);
+  alert("✅ ثبت شد");
+
+  // پاکسازی فرم
+  document.getElementById("empName").value = "";
+  document.getElementById("empCode").value = "";
+  $("#eventDate").val("");
+  document.getElementById("eventTime").value = "";
+  document.getElementById("description").value = "";
+}
+
+
+
+function searchReports(){
+  const keyword = document.getElementById("searchName").value.trim().toLowerCase();
+
+  const fromVal = document.getElementById("fromDate").value;
+  const toVal   = document.getElementById("toDate").value;
+
+  const fromNum = fromVal ? parseInt(normalizeDate(fromVal)) : 0;
+  const toNum   = toVal   ? parseInt(normalizeDate(toVal))   : 99999999;
+
+  const resultsDiv = document.getElementById("reportResults");
+  resultsDiv.innerHTML = "";
+
+  const filtered = events.filter(ev => {
+    const evNum = parseInt(normalizeDate(ev.date));
+    const evName = ev.name ? ev.name.trim().toLowerCase() : "";
+    const evCode = ev.code ? ev.code.trim().toLowerCase() : "";
+
+    return (!keyword || evName.includes(keyword) || evCode.includes(keyword)) &&
+           (!isNaN(evNum) && evNum >= fromNum && evNum <= toNum);
+  });
+
+  if(filtered.length === 0){
+    resultsDiv.innerHTML = "<p>❌ موردی یافت نشد</p>";
+  } else {
+    filtered.forEach(ev => {
+      resultsDiv.innerHTML += `
+        <div class="report-item glass-card" style="margin:8px 0;padding:8px;text-align:right">
+          👤 نام: ${ev.name} <br>
+          🔢 کد پرسنلی: ${ev.code} <br>
+          📅 تاریخ: ${ev.date} <br>
+          ⏰ ${ev.type}: ${ev.time} <br>
+          📝 توضیح: ${ev.desc}
+        </div>`;
+    });
+  }
+}
+
+
+
+function logout(){showPage("loginPage");}
+
+// فعال کردن تقویم شمسی
+$(function(){
+  $(".persian-date").persianDatepicker({format:'YYYY/MM/DD', initialValue:true, autoClose:true});
+});
+function exportToExcel(){
+  if(events.length === 0){
+    alert("⚠️ هیچ داده‌ای برای خروجی وجود ندارد");
+    return;
+  }
+
+  // گرفتن فیلترهای فرم جستجو
+  const keyword = document.getElementById("searchName").value.trim().toLowerCase();
+  const fromVal = document.getElementById("fromDate").value;
+  const toVal   = document.getElementById("toDate").value;
+
+  const fromNum = fromVal ? normalizeDateToNum(fromVal) : 0;
+  const toNum   = toVal   ? normalizeDateToNum(toVal)   : 99999999;
+
+  // فیلتر روی داده‌ها
+  const filtered = events.filter(ev => {
+    const evNum = normalizeDateToNum(ev.date);
+    const evName = ev.name ? ev.name.trim().toLowerCase() : "";
+    const evCode = ev.code ? ev.code.trim().toLowerCase() : "";
+    return (!keyword || evName.includes(keyword) || evCode.includes(keyword)) &&
+           (evNum >= fromNum && evNum <= toNum);
+  });
+
+  if(filtered.length === 0){
+    alert("❌ هیچ داده‌ای مطابق جستجو یافت نشد");
+    return;
+  }
+
+  // ساختن CSV
+  let csv = "نام,کد پرسنلی,تاریخ,نوع,ساعت,توضیحات\n";
+  filtered.forEach(ev=>{
+    csv += `${ev.name},${ev.code},${ev.date},${ev.type},${ev.time},${ev.desc}\n`;
+  });
+
+  // ساختن فایل و شروع دانلود
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "گزارش-حضورغیاب.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+</script>
+</body>
+</html>
