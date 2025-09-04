@@ -198,6 +198,7 @@ h1, h2 {
 <input id="fromDate" class="persian-date" placeholder="از تاریخ" />
 <input id="toDate" class="persian-date" placeholder="تا تاریخ" />
 <button onclick="searchReports()">جستجو</button>
+<button onclick="showAllReports()">نمایش همه</button>
 <button onclick="exportToExcel()">📥 دانلود اکسل</button>
 <div id="reportResults" class="glass-card"></div>
 <button class="back-btn" onclick="backToMenu()">بازگشت</button>
@@ -347,14 +348,14 @@ function searchReports(){
   const fromVal = document.getElementById("fromDate").value;
   const toVal   = document.getElementById("toDate").value;
 
-  const fromNum = fromVal ? parseInt(normalizeDate(fromVal)) : 0;
-  const toNum   = toVal   ? parseInt(normalizeDate(toVal))   : 99999999;
+  const fromNum = fromVal ? parseInt(normalizeDate(fromVal).replace(/\//g, '')) : 0;
+  const toNum   = toVal   ? parseInt(normalizeDate(toVal).replace(/\//g, ''))   : 99999999;
 
   const resultsDiv = document.getElementById("reportResults");
   resultsDiv.innerHTML = "";
 
   const filtered = events.filter(ev => {
-    const evNum = parseInt(normalizeDate(ev.date));
+    const evNum = parseInt(normalizeDate(ev.date).replace(/\//g, ''));
     const evName = ev.name ? ev.name.trim().toLowerCase() : "";
     const evCode = ev.code ? ev.code.trim().toLowerCase() : "";
 
@@ -385,6 +386,31 @@ function searchReports(){
   window.lastSearchResults = filtered;
 }
 
+function showAllReports() {
+  const resultsDiv = document.getElementById("reportResults");
+  resultsDiv.innerHTML = "";
+
+  if (events.length === 0) {
+    resultsDiv.innerHTML = "<p>❌ موردی یافت نشد</p>";
+  } else {
+    events.forEach((ev, index) => {
+      resultsDiv.innerHTML += `
+        <div class="report-item glass-card" style="margin:8px 0;padding:8px;text-align:right" id="report-${index}">
+          👤 نام: ${ev.name} <br>
+          🔢 کد پرسنلی: ${ev.code} <br>
+          📅 تاریخ: ${ev.date} <br>
+          ⏰ ${ev.type}: ${ev.time} <br>
+          📝 توضیح: ${ev.desc} <br>
+          <button onclick="viewEvent(${index})" style="width:auto;padding:5px 10px;font-size:0.8em;margin-top:5px;">👁️ مشاهده</button>
+          <button onclick="editEvent(${index})" style="width:auto;padding:5px 10px;font-size:0.8em;margin-top:5px;">✏️ ویرایش</button>
+          <button onclick="deleteEvent(${index})" style="width:auto;padding:5px 10px;font-size:0.8em;margin-top:5px;background:darkred;color:white;">❌ حذف</button>
+        </div>`;
+    });
+  }
+
+  // ⭐ ذخیره نتایج برای استفاده در exportToExcel
+  window.lastSearchResults = events;
+}
 
 function viewEvent(index) {
   const event = events[index];
@@ -475,11 +501,11 @@ function exportData(format){
   const toVal   = document.getElementById("expTo").value;
   const keyword = document.getElementById("expEmp").value.trim().toLowerCase();
 
-  const fromNum = fromVal ? parseInt(normalizeDate(fromVal)) : 0;
-  const toNum   = toVal   ? parseInt(normalizeDate(toVal))   : 99999999;
+  const fromNum = fromVal ? parseInt(normalizeDate(fromVal).replace(/\//g, '')) : 0;
+  const toNum   = toVal   ? parseInt(normalizeDate(toVal).replace(/\//g, ''))   : 99999999;
 
   let filtered = events.filter(ev => {
-    const evNum = parseInt(normalizeDate(ev.date));
+    const evNum = parseInt(normalizeDate(ev.date).replace(/\//g, ''));
     const evName = ev.name ? ev.name.trim().toLowerCase() : "";
     const evCode = ev.code ? ev.code.trim().toLowerCase() : "";
 
