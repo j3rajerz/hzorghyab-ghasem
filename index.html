@@ -68,6 +68,7 @@
         <button class="btn" onclick="showSection('list')"><i class="fa-solid fa-list"></i> گزارش‌ها</button>
         <button class="btn" onclick="showSection('stats')"><i class="fa-solid fa-chart-pie"></i> آمار</button>
         <button class="btn" onclick="resetAll()"><i class="fa-solid fa-trash-can"></i> حذف همه</button>
+        <button class="btn" onclick="showSection('settings')"><i class="fa-solid fa-gear"></i> تنظیمات گیت‌هاب</button>
       </div>
     </main>
 
@@ -109,6 +110,32 @@
       <div id="statKpi" class="kpi"></div>
       <div id="statResult"></div>
       <img id="reportImage" class="report-image hidden" alt="گزارش تصویری">
+    </section>
+
+    <section id="settings" class="section">
+      <header><h2>تنظیمات گیت‌هاب</h2><button class="back" onclick="hideSections()"><i class="fa-solid fa-arrow-right"></i></button></header>
+      <div class="card">
+        <div class="input-group"><label>مالک (Owner)</label><input id="ghOwner" placeholder="username یا org"></div>
+        <div class="input-group"><label>مخزن (Repo)</label><input id="ghRepo" placeholder="repo-name"></div>
+        <div class="input-group"><label>شاخه (Branch)</label><input id="ghBranch" placeholder="main"></div>
+        <div class="input-group"><label>شاخه مسیر فایل‌ها (Directory)</label><input id="ghDir" placeholder="data"></div>
+        <div class="input-group"><label>توکن دسترسی (Token)</label><input id="ghToken" type="password" placeholder="ghp_..."></div>
+        <div class="input-group">
+          <label><input type="checkbox" id="ghSaveToken"> ذخیره توکن در مرورگر (ریسک امنیتی)</label>
+          <label><input type="checkbox" id="ghAutoSync"> همگام‌سازی خودکار بعد از تغییرات</label>
+          <label><input type="checkbox" id="ghPullOnLoad"> بارگذاری از گیت‌هاب هنگام شروع</label>
+        </div>
+        <div class="btn-container">
+          <button class="btn" onclick="saveGhSettings()"><i class="fa-solid fa-floppy-disk"></i> ذخیره تنظیمات</button>
+          <button class="btn" onclick="pullFromGithub()"><i class="fa-solid fa-cloud-arrow-down"></i> دریافت از گیت‌هاب</button>
+          <button class="btn" onclick="pushToGithub()"><i class="fa-solid fa-cloud-arrow-up"></i> ارسال به گیت‌هاب</button>
+        </div>
+        <div style="margin-top:10px; font-size:12px; opacity:.8">برای توکن، دسترسی repo:contents کافی است.</div>
+      </div>
+      <div class="card">
+        <strong>فایل‌ها:</strong>
+        <div style="margin-top:8px">records.json, names.json, codes.json, people.json</div>
+      </div>
     </section>
   </div>
 
@@ -485,7 +512,163 @@
         document.querySelector('#statResult').innerHTML = '';
         document.querySelector('#statKpi').innerHTML = '';
         toast('تمامی داده‌ها پاک شد');
+        attemptPushIfAutoSync();
       }
+    };
+
+    // ===== GitHub Sync =====
+    const GH_DEFAULTS = { owner:'', repo:'', branch:'main', dir:'data', saveToken:false, token:'', autoSync:false, pullOnLoad:false };
+    let ghSettings = null; // in-memory settings
+    let ghTokenMemory = '';
+    let ghShas = JSON.parse(localStorage.getItem('ghShas') || '{}');
+
+    const loadGhSettings = () => {
+      const s = JSON.parse(localStorage.getItem('ghSettings') || 'null') || GH_DEFAULTS;
+      ghSettings = { ...GH_DEFAULTS, ...s };
+      if (!ghSettings.saveToken) ghSettings.token = '';
+      const owner = document.querySelector('#ghOwner'); if (owner) owner.value = ghSettings.owner;
+      const repo = document.querySelector('#ghRepo'); if (repo) repo.value = ghSettings.repo;
+      const branch = document.querySelector('#ghBranch'); if (branch) branch.value = ghSettings.branch;
+      const dir = document.querySelector('#ghDir'); if (dir) dir.value = ghSettings.dir;
+      const token = document.querySelector('#ghToken'); if (token) token.value = '';
+      const saveChk = document.querySelector('#ghSaveToken'); if (saveChk) saveChk.checked = !!ghSettings.saveToken;
+      const aSync = document.querySelector('#ghAutoSync'); if (aSync) aSync.checked = !!ghSettings.autoSync;
+      const pLoad = document.querySelector('#ghPullOnLoad'); if (pLoad) pLoad.checked = !!ghSettings.pullOnLoad;
+    };
+
+    const saveGhSettings = () => {
+      const s = {
+        owner: document.querySelector('#ghOwner').value.trim(),
+        repo: document.querySelector('#ghRepo').value.trim(),
+        branch: document.querySelector('#ghBranch').value.trim() || 'main',
+        dir: document.querySelector('#ghDir').value.trim() || 'data',
+        token: document.querySelector('#ghToken').value.trim(),
+        saveToken: document.querySelector('#ghSaveToken').checked,
+        autoSync: document.querySelector('#ghAutoSync').checked,
+        pullOnLoad: document.querySelector('#ghPullOnLoad').checked
+      };
+      ghTokenMemory = s.saveToken ? '' : s.token;
+      const persist = { ...s, token: s.saveToken ? s.token : '' };
+      localStorage.setItem('ghSettings', JSON.stringify(persist));
+      ghSettings = { ...persist };
+      if (!ghSettings.saveToken) document.querySelector('#ghToken').value = '';
+      toast('تنظیمات ذخیره شد');
+    };
+
+    const ghHeaders = () => {
+      const token = (ghSettings && ghSettings.saveToken && ghSettings.token) ? ghSettings.token : ghTokenMemory;
+      const h = { 'Accept':'application/vnd.github+json' };
+      if (token) h['Authorization'] = 'Bearer ' + token;
+      return h;
+    };
+    const ghBase = () => `https://api.github.com/repos/${ghSettings.owner}/${ghSettings.repo}/contents`;
+    const filePath = (name) => {
+      const d = (ghSettings.dir || '').replace(/^\/+|\/+$/g,'');
+      return d ? `${d}/${name}` : name;
+    };
+    const encodeB64 = (str) => {
+      const enc = new TextEncoder();
+      const bytes = enc.encode(str);
+      let binary = '';
+      bytes.forEach(b => binary += String.fromCharCode(b));
+      return btoa(binary);
+    };
+    const decodeB64 = (b64) => {
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+      return new TextDecoder().decode(bytes);
+    };
+
+    const ghGetFile = async (name) => {
+      const url = `${ghBase()}/${encodeURIComponent(filePath(name))}?ref=${encodeURIComponent(ghSettings.branch)}`;
+      const res = await fetch(url, { headers: ghHeaders() });
+      if (res.status === 404) return { content: null, sha: null };
+      if (!res.ok) throw new Error('GET ' + name + ' ' + res.status);
+      const json = await res.json();
+      const text = decodeB64(json.content || '');
+      return { content: JSON.parse(text || 'null'), sha: json.sha };
+    };
+
+    const ghPutFile = async (name, data) => {
+      const path = filePath(name);
+      const existingSha = ghShas[path] || (await ghGetFile(name)).sha || undefined;
+      const url = `${ghBase()}/${encodeURIComponent(path)}`;
+      const body = {
+        message: `Update ${path} via app` ,
+        content: encodeB64(JSON.stringify(data, null, 2)),
+        branch: ghSettings.branch
+      };
+      if (existingSha) body.sha = existingSha;
+      const res = await fetch(url, { method:'PUT', headers: { ...ghHeaders(), 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error('PUT ' + name + ' ' + res.status);
+      const json = await res.json();
+      ghShas[path] = json.content.sha;
+      localStorage.setItem('ghShas', JSON.stringify(ghShas));
+      return json.content.sha;
+    };
+
+    const pushToGithub = async () => {
+      try {
+        requireGh();
+        toast('در حال ارسال به گیت‌هاب...');
+        await Promise.all([
+          ghPutFile('records.json', records),
+          ghPutFile('names.json', names),
+          ghPutFile('codes.json', codes),
+          ghPutFile('people.json', people)
+        ]);
+        toast('✓ همگام‌سازی با گیت‌هاب انجام شد');
+      } catch (e) {
+        console.error(e);
+        toast('خطا در همگام‌سازی با گیت‌هاب');
+      }
+    };
+
+    const pullFromGithub = async () => {
+      try {
+        requireGh();
+        toast('در حال دریافت از گیت‌هاب...');
+        const [r,nm,cd,pp] = await Promise.all([
+          ghGetFile('records.json'),
+          ghGetFile('names.json'),
+          ghGetFile('codes.json'),
+          ghGetFile('people.json')
+        ]);
+        const apply = (resp, key, fallback) => {
+          if (resp && resp.content) {
+            if (key === 'records') records = resp.content; if (key === 'names') names = resp.content; if (key === 'codes') codes = resp.content; if (key === 'people') people = resp.content;
+            ghShas[filePath(key + '.json')] = resp.sha || null;
+          } else if (fallback) {
+            // keep current
+          }
+        };
+        apply(r,'records',true); apply(nm,'names',true); apply(cd,'codes',true); apply(pp,'people',true);
+        DB.save('records', records); DB.save('names', names); DB.save('codes', codes); DB.save('people', people);
+        localStorage.setItem('ghShas', JSON.stringify(ghShas));
+        updateSuggestions(); renderAlarms();
+        if (document.querySelector('#list').classList.contains('active')) showList();
+        if (document.querySelector('#stats').classList.contains('active')) showStats();
+        toast('✓ داده‌ها از گیت‌هاب بارگذاری شد');
+      } catch (e) {
+        console.error(e);
+        toast('خطا در دریافت از گیت‌هاب');
+      }
+    };
+
+    const requireGh = () => {
+      if (!ghSettings) loadGhSettings();
+      const token = (ghSettings.saveToken && ghSettings.token) ? ghSettings.token : ghTokenMemory;
+      if (!ghSettings.owner || !ghSettings.repo || !ghSettings.branch) throw new Error('GitHub settings incomplete');
+      if (!token) throw new Error('GitHub token missing');
+    };
+
+    let pushDebounce = null;
+    const attemptPushIfAutoSync = () => {
+      if (!ghSettings) loadGhSettings();
+      if (!ghSettings || !ghSettings.autoSync) return;
+      clearTimeout(pushDebounce);
+      pushDebounce = setTimeout(() => { pushToGithub(); }, 1200);
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -494,6 +677,8 @@
       wirePersonInputs();
       renderAlarms();
       applyLiveSearch();
+      loadGhSettings();
+      if (ghSettings && ghSettings.pullOnLoad) { pullFromGithub(); }
     });
   </script>
 </body>
