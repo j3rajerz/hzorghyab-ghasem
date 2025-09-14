@@ -298,6 +298,7 @@
       // refresh current view if open
       if (document.querySelector('#list').classList.contains('active')) showList();
       if (document.querySelector('#stats').classList.contains('active')) showStats();
+      attemptPushIfAutoSync();
     };
 
     const toggleFilter = () => {
@@ -345,6 +346,7 @@
       toast('رکورد حذف شد');
       showList();
       renderAlarms();
+      attemptPushIfAutoSync();
     };
 
     const normalizeDate = d => d; // dates are in YYYY/MM/DD suitable for lexicographic compare
