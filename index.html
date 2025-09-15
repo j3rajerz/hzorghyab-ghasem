@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>ربات قاسم | سیستم حضور و غیاب</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.0/css/all.min.css">
+  <style>
+    :root { --bg:#0f0f0f; --card:rgba(30,30,30,.85); --gold:#FFD700; --gold-glow:rgba(255,215,0,.55); --text:#f2f2f2; --border:rgba(255,215,0,.35); --radius:16px; --transition:.3s cubic-bezier(.25,.8,.25,1); }
+    * { box-sizing:border-box; margin:0; padding:0; font-family:'IRANSans',Tahoma,Arial,sans-serif; }
+    body { background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
+    header { background:linear-gradient(135deg,#1a1a1a 0%,#222 100%); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid var(--gold); }
+    .logo { display:flex; align-items:center; gap:10px; font-size:18px; font-weight:bold; color:var(--gold); text-shadow:0 0 8px var(--gold-glow); }
+    main { flex:1; display:flex; flex-direction:column; padding:12px; gap:12px; overflow:hidden; }
+    .alarms { flex:1; background:var(--card); border-radius:var(--radius); padding:12px; overflow-y:auto; }
+    .alarm-card { background:#222; border:1px solid var(--border); border-radius:var(--radius); padding:10px; margin-bottom:8px; color:var(--gold); display:flex; align-items:center; justify-content:space-between; }
+    .badge { background:var(--gold); color:#000; padding:2px 8px; border-radius:999px; font-weight:700; }
+    .btn-container { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+    .btn { background:linear-gradient(135deg,#222 0%,#111 100%); border:1px solid var(--border); color:var(--gold); border-radius:var(--radius); padding:14px; text-align:center; cursor:pointer; transition:var(--transition); display:flex; flex-direction:column; align-items:center; gap:6px; }
+    .btn:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,0,0,.5),0 0 12px var(--gold-glow); }
+    .btn i { font-size:22px; }
+    .section { position:fixed; inset:0; background:var(--bg); z-index:100; transform:translateX(100%); transition:transform .4s ease; display:flex; flex-direction:column; padding:20px; overflow-y:auto; }
+    .section.active { transform:translateX(0); }
+    .section header { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+    .section h2 { color:var(--gold); font-size:18px; }
+    .back { background:none; border:none; color:var(--gold); font-size:20px; cursor:pointer; }
+    .input-group { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+    .input-group label { font-size:13px; color:var(--gold); }
+    .input-group input,.input-group select,.input-group textarea { width:100%; padding:12px; font-size:16px; border-radius:var(--radius); border:1px solid var(--border); background:#111; color:var(--text); }
+    .date-input { display:flex; gap:8px; }
+    .date-input button { background:var(--gold); color:#000; border:none; padding:10px 12px; border-radius:var(--radius); cursor:pointer; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:12px; margin-bottom:10px; }
+    .card-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .row-actions { display:flex; gap:8px; }
+    .icon-btn { background:#181818; color:var(--gold); border:1px solid var(--border); border-radius:10px; padding:8px 10px; cursor:pointer; }
+    .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--gold); color:#000; padding:12px 24px; border-radius:var(--radius); z-index:200; animation: fadeIn 0.3s, fadeOut 0.3s 2.2s forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    @keyframes fadeOut { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, 20px); } }
+    .hidden { display: none !important; }
+    .export-buttons { display:flex; gap:10px; margin-top:15px; }
+    .export-btn { flex:1; padding:10px; background:linear-gradient(135deg,#222 0%,#111 100%); border:1px solid var(--border); color:var(--gold); border-radius:var(--radius); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; }
+    .export-btn:hover { background: linear-gradient(135deg, #333 0%, #222 100%); }
+    .report-image { max-width:100%; border-radius:var(--radius); margin-top:15px; border:1px solid var(--border); }
+    .date-field { cursor:pointer; }
+    .pwt-datepicker { z-index:10000; font-family:'IRANSans',Tahoma,Arial,sans-serif; }
+    .pwt-datepicker table { border-radius:var(--radius); overflow:hidden; }
+    .pwt-datepicker .pwt-btn-today { background-color:var(--gold); color:#000; }
+    .table { width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:12px; }
+    .table th,.table td { text-align:center; padding:10px; border-bottom:1px solid var(--border); }
+    .table thead th { background:#1d1d1d; color:var(--gold); position:sticky; top:0; z-index:1; }
+    .kpi { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:10px 0; }
+    .kpi .card { text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <div class="logo"><i class="fa-solid fa-robot"></i> ربات قاسم - سیستم حضور و غیاب</div>
+      <span id="today"></span>
+    </header>
+
+    <main>
+      <section class="alarms" id="alarmsBox"></section>
+      <div class="btn-container">
+        <button class="btn" onclick="showSection('record')"><i class="fa-solid fa-pen-to-square"></i> ثبت حضور / خروج</button>
+        <button class="btn" onclick="showSection('list')"><i class="fa-solid fa-list"></i> گزارش‌ها</button>
+        <button class="btn" onclick="showSection('stats')"><i class="fa-solid fa-chart-pie"></i> آمار</button>
+        <button class="btn" onclick="resetAll()"><i class="fa-solid fa-trash-can"></i> حذف همه</button>
+        <button class="btn" onclick="showSection('settings')"><i class="fa-solid fa-gear"></i> تنظیمات گیت‌هاب</button>
+      </div>
+    </main>
+
+    <section id="record" class="section">
+      <header><h2>ثبت حضور / خروج</h2><button class="back" onclick="hideSections()"><i class="fa-solid fa-arrow-right"></i></button></header>
+      <div class="input-group"><label>نام کامل</label><input id="name" list="nameList"></div>
+      <datalist id="nameList"></datalist>
+      <div class="input-group"><label>کد پرسنلی</label><input id="code" list="codeList"></div>
+      <datalist id="codeList"></datalist>
+      <div class="input-group"><label>نوع</label><select id="type"><option>ورود</option><option>خروج</option></select></div>
+      <div class="input-group"><label>تاریخ</label><div class="date-input"><input id="date" class="date-field" readonly><button onclick="openCal('date')"><i class="fa-solid fa-calendar"></i></button></div></div>
+      <div class="input-group"><label>ساعت</label><input type="time" id="time"></div>
+      <div class="input-group"><label>توضیحات</label><textarea id="note" rows="3"></textarea></div>
+      <div class="btn-container"><button class="btn" onclick="saveRecord()"><i class="fa-solid fa-check"></i> ذخیره</button><button class="btn" onclick="hideSections()"><i class="fa-solid fa-xmark"></i> انصراف</button></div>
+    </section>
+
+    <section id="list" class="section">
+      <header><h2>گزارش‌ها</h2><button class="back" onclick="hideSections()"><i class="fa-solid fa-arrow-right"></i></button></header>
+      <div class="input-group"><label>فیلتر</label><select id="filter" onchange="toggleFilter()"><option value="all">همه</option><option value="today">امروز</option><option value="yesterday">دیروز</option><option value="week">هفته اخیر</option><option value="month">ماه جاری</option><option value="range">بازه</option></select></div>
+      <div id="filterRow" class="input-group"><input id="filterInput" placeholder="نام یا کد پرسنلی (اختیاری)"></div>
+      <div id="rangeRow" class="input-group hidden"><label>از</label><input id="from" class="date-field" readonly><label>تا</label><input id="to" class="date-field" readonly></div>
+      <div class="btn-container">
+        <button class="btn" onclick="showList()"><i class="fa-solid fa-magnifying-glass"></i> نمایش</button>
+        <button class="btn" onclick="exportExcelList()"><i class="fa-solid fa-file-excel"></i> خروجی اکسل</button>
+        <button class="btn" onclick="exportImageList()"><i class="fa-solid fa-image"></i> خروجی تصویر</button>
+      </div>
+      <div id="listResult"></div>
+    </section>
+
+    <section id="stats" class="section">
+      <header><h2>آمار</h2><button class="back" onclick="hideSections()"><i class="fa-solid fa-arrow-right"></i></button></header>
+      <div class="input-group"><label>از</label><input id="statFrom" class="date-field" readonly></div>
+      <div class="input-group"><label>تا</label><input id="statTo" class="date-field" readonly></div>
+      <div class="btn-container">
+        <button class="btn" onclick="showStats()"><i class="fa-solid fa-chart-line"></i> محاسبه</button>
+        <button class="btn" onclick="exportExcelStats()"><i class="fa-solid fa-file-excel"></i> خروجی اکسل</button>
+        <button class="btn" onclick="exportImageStats()"><i class="fa-solid fa-image"></i> خروجی تصویر</button>
+      </div>
+      <div id="statKpi" class="kpi"></div>
+      <div id="statResult"></div>
+      <img id="reportImage" class="report-image hidden" alt="گزارش تصویری">
+    </section>
+
+    <section id="settings" class="section">
+      <header><h2>تنظیمات گیت‌هاب</h2><button class="back" onclick="hideSections()"><i class="fa-solid fa-arrow-right"></i></button></header>
+      <div class="card">
+        <div class="input-group"><label>مالک (Owner)</label><input id="ghOwner" placeholder="username یا org"></div>
+        <div class="input-group"><label>مخزن (Repo)</label><input id="ghRepo" placeholder="repo-name"></div>
+        <div class="input-group"><label>شاخه (Branch)</label><input id="ghBranch" placeholder="main"></div>
+        <div class="input-group"><label>شاخه مسیر فایل‌ها (Directory)</label><input id="ghDir" placeholder="data"></div>
+        <div class="input-group"><label>توکن دسترسی (Token)</label><input id="ghToken" type="password" placeholder="ghp_..."></div>
+        <div class="input-group">
+          <label><input type="checkbox" id="ghSaveToken"> ذخیره توکن در مرورگر (ریسک امنیتی)</label>
+          <label><input type="checkbox" id="ghAutoSync"> همگام‌سازی خودکار بعد از تغییرات</label>
+          <label><input type="checkbox" id="ghPullOnLoad"> بارگذاری از گیت‌هاب هنگام شروع</label>
+        </div>
+        <div class="btn-container">
+          <button class="btn" onclick="saveGhSettings()"><i class="fa-solid fa-floppy-disk"></i> ذخیره تنظیمات</button>
+          <button class="btn" onclick="pullFromGithub()"><i class="fa-solid fa-cloud-arrow-down"></i> دریافت از گیت‌هاب</button>
+          <button class="btn" onclick="pushToGithub()"><i class="fa-solid fa-cloud-arrow-up"></i> ارسال به گیت‌هاب</button>
+        </div>
+        <div style="margin-top:10px; font-size:12px; opacity:.8">برای توکن، دسترسی repo:contents کافی است.</div>
+      </div>
+      <div class="card">
+        <strong>فایل‌ها:</strong>
+        <div style="margin-top:8px">records.json, names.json, codes.json, people.json</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/persian-date@1.1.0/dist/persian-date.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <script>
+    const DB = { load: k => JSON.parse(localStorage.getItem(k) || '[]'), save: (k, v) => localStorage.setItem(k, JSON.stringify(v)) };
+    const DBV = { load: k => JSON.parse(localStorage.getItem(k) || '{}'), save: (k, v) => localStorage.setItem(k, JSON.stringify(v)) };
+
+    let records = DB.load('records');
+    let names = DB.load('names');
+    let codes = DB.load('codes');
+    let people = DB.load('people'); // [{code, name}]
+
+    const today = new persianDate().format('YYYY/MM/DD');
+    document.querySelector('#today').textContent = today;
+    let currentFilteredData = [];
+    let editId = null; // when editing a record
+
+    const toast = msg => { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2500); };
+
+    const genId = () => 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+
+    // datepickers
+    const initDatePickers = () => {
+      const dateFields = document.querySelectorAll('.date-field');
+      dateFields.forEach(field => {
+        $(field).persianDatepicker({
+          format: 'YYYY/MM/DD',
+          initialValue: field.id === 'date' ? today : false,
+          autoClose: true,
+          observer: true,
+          calendar: { persian: { locale: 'fa', showHint: true } },
+          toolbox: { calendarSwitch: { enabled: false } }
+        });
+        field.addEventListener('click', function(){ $(this).focus(); });
+      });
+      document.querySelector('#date').value = today;
+      document.querySelector('#from').value = today;
+      document.querySelector('#to').value = today;
+      document.querySelector('#statFrom').value = today;
+      document.querySelector('#statTo').value = today;
+    };
+    const openCal = id => document.querySelector('#' + id).focus();
+
+    const safeText = t => (t == null ? '' : String(t));
+
+    const renderAlarms = () => {
+      const tRecs = records.filter(r => r.d === today);
+      const enter = tRecs.filter(r => r.t === 'ورود').length;
+      const exit = tRecs.filter(r => r.t === 'خروج').length;
+      const box = document.querySelector('#alarmsBox');
+      box.innerHTML = '';
+      const items = [
+        { label: 'ورودهای امروز', value: enter, icon: 'sign-in' },
+        { label: 'خروج‌های امروز', value: exit, icon: 'sign-out' },
+        { label: 'مجموع ثبت‌های امروز', value: tRecs.length, icon: 'list' }
+      ];
+      items.forEach(i => {
+        const card = document.createElement('div'); card.className = 'alarm-card';
+        const left = document.createElement('span'); left.textContent = '📌 ' + i.label;
+        const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = i.value;
+        card.appendChild(left); card.appendChild(badge);
+        box.appendChild(card);
+      });
+    };
+
+    const showSection = id => {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelector('#' + id).classList.add('active');
+      if (id === 'record') {
+        document.querySelector('#date').value = today;
+        // default time now
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        document.querySelector('#time').value = hh + ':' + mm;
+      }
+    };
+    const hideSections = () => { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); editId = null; clearForm(); };
+
+    const clearForm = () => {
+      document.querySelector('#name').value = '';
+      document.querySelector('#code').value = '';
+      document.querySelector('#type').value = 'ورود';
+      document.querySelector('#date').value = today;
+      const now = new Date(); document.querySelector('#time').value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      document.querySelector('#note').value = '';
+    };
+
+    const updateSuggestions = () => {
+      document.querySelector('#nameList').innerHTML = names.map(n => `<option value="${n}">`).join('');
+      document.querySelector('#codeList').innerHTML = codes.map(c => `<option value="${c}">`).join('');
+    };
+
+    // people map helpers
+    const getNameByCode = code => (people.find(p => p.c === code) || {}).n || '';
+    const getCodeByName = name => (people.find(p => p.n === name) || {}).c || '';
+    const upsertPerson = (code, name) => {
+      if (!code || !name) return;
+      const idx = people.findIndex(p => p.c === code);
+      if (idx >= 0) { people[idx].n = name; }
+      else { people.push({ c: code, n: name }); }
+      DB.save('people', people);
+      if (!names.includes(name)) { names.push(name); DB.save('names', names); }
+      if (!codes.includes(code)) { codes.push(code); DB.save('codes', codes); }
+      updateSuggestions();
+    };
+
+    // link inputs: when code changes, autofill name; when name changes, autofill code
+    const wirePersonInputs = () => {
+      const nameEl = document.querySelector('#name');
+      const codeEl = document.querySelector('#code');
+      nameEl.addEventListener('change', () => {
+        const n = nameEl.value.trim();
+        const c = getCodeByName(n);
+        if (c) codeEl.value = c;
+      });
+      codeEl.addEventListener('change', () => {
+        const c = codeEl.value.trim();
+        const n = getNameByCode(c);
+        if (n) document.querySelector('#name').value = n;
+      });
+    };
+
+    const saveRecord = () => {
+      const n = document.querySelector('#name').value.trim();
+      const c = document.querySelector('#code').value.trim();
+      const t = document.querySelector('#type').value;
+      const d = document.querySelector('#date').value.trim();
+      const tm = document.querySelector('#time').value.trim();
+      const note = document.querySelector('#note').value.trim();
+      if (!n || !c || !d || !tm) { toast('فیلدهای ضروری خالی است'); return; }
+
+      // validate mapping consistency if exists
+      const existingByCode = getNameByCode(c);
+      const existingByName = getCodeByName(n);
+      if (existingByCode && existingByCode !== n) { toast('کد وارد شده متعلق به نام دیگری است'); return; }
+      if (existingByName && existingByName !== c) { toast('نام وارد شده متعلق به کد دیگری است'); return; }
+
+      upsertPerson(c, n);
+
+      if (editId) {
+        const idx = records.findIndex(r => r.id === editId);
+        if (idx >= 0) { records[idx] = { ...records[idx], n, c, t, d, tm, note }; }
+        DB.save('records', records);
+        editId = null;
+        toast('✓ ویرایش شد');
+      } else {
+        const rec = { id: genId(), n, c, t, d, tm, note, ts: Date.now() };
+        records.push(rec); DB.save('records', records); toast('✓ ذخیره شد');
+      }
+      updateSuggestions();
+      hideSections();
+      renderAlarms();
+      // refresh current view if open
+      if (document.querySelector('#list').classList.contains('active')) showList();
+      if (document.querySelector('#stats').classList.contains('active')) showStats();
+      attemptPushIfAutoSync();
+    };
+
+    const toggleFilter = () => {
+      const v = document.querySelector('#filter').value;
+      document.querySelector('#rangeRow').classList.toggle('hidden', v !== 'range');
+    };
+
+    const buildRecordCard = (rec) => {
+      const card = document.createElement('div'); card.className = 'card';
+      const row = document.createElement('div'); row.className = 'card-row';
+      const info = document.createElement('div');
+      const strong = document.createElement('strong'); strong.textContent = safeText(rec.n);
+      const spanCode = document.createElement('span'); spanCode.textContent = ' (' + safeText(rec.c) + ')';
+      const meta = document.createElement('div'); meta.textContent = `${rec.t} - ${rec.d} ${rec.tm}`;
+      const note = document.createElement('div'); if (rec.note) note.textContent = rec.note;
+      info.appendChild(strong); info.appendChild(spanCode); info.appendChild(document.createElement('br')); info.appendChild(meta); if (rec.note) { info.appendChild(document.createElement('br')); info.appendChild(note); }
+      const actions = document.createElement('div'); actions.className = 'row-actions';
+      const editBtn = document.createElement('button'); editBtn.className = 'icon-btn'; editBtn.title = 'ویرایش'; editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+      editBtn.addEventListener('click', () => startEdit(rec.id));
+      const delBtn = document.createElement('button'); delBtn.className = 'icon-btn'; delBtn.title = 'حذف'; delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+      delBtn.addEventListener('click', () => deleteRecord(rec.id));
+      actions.appendChild(editBtn); actions.appendChild(delBtn);
+      row.appendChild(info); row.appendChild(actions);
+      card.appendChild(row);
+      return card;
+    };
+
+    const startEdit = (id) => {
+      const r = records.find(x => x.id === id);
+      if (!r) return;
+      editId = id;
+      document.querySelector('#name').value = r.n;
+      document.querySelector('#code').value = r.c;
+      document.querySelector('#type').value = r.t;
+      document.querySelector('#date').value = r.d;
+      document.querySelector('#time').value = r.tm;
+      document.querySelector('#note').value = r.note || '';
+      showSection('record');
+    };
+
+    const deleteRecord = (id) => {
+      if (!confirm('آیا از حذف این رکورد اطمینان دارید؟')) return;
+      records = records.filter(r => r.id !== id);
+      DB.save('records', records);
+      toast('رکورد حذف شد');
+      showList();
+      renderAlarms();
+      attemptPushIfAutoSync();
+    };
+
+    const normalizeDate = d => d; // dates are in YYYY/MM/DD suitable for lexicographic compare
+    const toMinutes = tm => { const [h, m] = tm.split(':').map(Number); return h*60 + m; };
+    const minutesToHHMM = mins => {
+      const sign = mins < 0 ? '-' : '';
+      const m = Math.abs(mins);
+      const h = Math.floor(m / 60), mm = m % 60;
+      return sign + String(h).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
+    };
+
+    const pairWorkSessions = (data) => {
+      // group by person+date
+      const key = r => r.c + '|' + r.d;
+      const groups = {};
+      data.forEach(r => { const k = key(r); (groups[k] ||= []).push(r); });
+      const sessions = [];
+      Object.values(groups).forEach(list => {
+        list.sort((a,b) => a.tm.localeCompare(b.tm) || a.ts - b.ts);
+        let lastEnter = null;
+        list.forEach(r => {
+          if (r.t === 'ورود') {
+            lastEnter = r;
+          } else if (r.t === 'خروج') {
+            if (lastEnter) {
+              const startM = toMinutes(lastEnter.tm);
+              const endM = toMinutes(r.tm);
+              if (endM >= startM) {
+                sessions.push({ c: r.c, n: r.n, d: r.d, start: lastEnter.tm, end: r.tm, minutes: endM - startM });
+              }
+              lastEnter = null;
+            }
+          }
+        });
+      });
+      return sessions;
+    };
+
+    const applyLiveSearch = () => {
+      const input = document.querySelector('#filterInput');
+      input.addEventListener('input', () => { showList(); });
+    };
+
+    const showList = () => {
+      const f = document.querySelector('#filter').value;
+      const inp = document.querySelector('#filterInput').value.trim();
+      const fr = document.querySelector('#from').value;
+      const to = document.querySelector('#to').value;
+      let filtered = records.slice();
+      if (f === 'today') filtered = records.filter(r => r.d === today);
+      if (f === 'yesterday') { const y = new persianDate().subtract('day', 1).format('YYYY/MM/DD'); filtered = records.filter(r => r.d === y); }
+      if (f === 'week') { const start = new persianDate().subtract('day', 6).format('YYYY/MM/DD'); const end = today; filtered = records.filter(r => r.d >= start && r.d <= end); }
+      if (f === 'month') { const ym = new persianDate().format('YYYY/MM'); filtered = records.filter(r => r.d.startsWith(ym)); }
+      if (f === 'range') filtered = records.filter(r => r.d >= fr && r.d <= to);
+      if (inp) filtered = filtered.filter(r => r.n.includes(inp) || r.c.includes(inp));
+      currentFilteredData = filtered;
+      const container = document.querySelector('#listResult');
+      container.innerHTML = '';
+      if (!filtered.length) { const p = document.createElement('p'); p.textContent = 'رکوردی یافت نشد'; container.appendChild(p); return; }
+      filtered.forEach(r => container.appendChild(buildRecordCard(r)));
+    };
+
+    const showStats = () => {
+      const fr = document.querySelector('#statFrom').value;
+      const to = document.querySelector('#statTo').value;
+      currentFilteredData = records.filter(r => (!fr || r.d >= fr) && (!to || r.d <= to));
+      const enter = currentFilteredData.filter(r => r.t === 'ورود').length;
+      const exit = currentFilteredData.filter(r => r.t === 'خروج').length;
+      const sessions = pairWorkSessions(currentFilteredData);
+      const totalMinutes = sessions.reduce((s,x) => s + x.minutes, 0);
+      const kpi = document.querySelector('#statKpi');
+      kpi.innerHTML = '';
+      const kpiItems = [
+        { title: 'تعداد ورود', value: String(enter) },
+        { title: 'تعداد خروج', value: String(exit) },
+        { title: 'جمع کل ساعات کاری', value: minutesToHHMM(totalMinutes) }
+      ];
+      kpiItems.forEach(i => { const c = document.createElement('div'); c.className = 'card'; c.innerHTML = `<div><strong>${i.title}:</strong></div><div style="margin-top:6px; font-size:20px; color: var(--gold)">${i.value}</div>`; kpi.appendChild(c); });
+
+      // per person summary
+      const perPerson = {};
+      sessions.forEach(s => { const k = s.c + '|' + s.n; perPerson[k] = (perPerson[k] || 0) + s.minutes; });
+
+      const container = document.querySelector('#statResult');
+      container.innerHTML = '';
+      const table = document.createElement('table'); table.className = 'table';
+      const thead = document.createElement('thead'); thead.innerHTML = '<tr><th>نام</th><th>کد</th><th>تاریخ</th><th>شروع</th><th>پایان</th><th>مدت</th></tr>';
+      const tbody = document.createElement('tbody');
+      sessions.forEach(s => { const tr = document.createElement('tr');
+        const tds = [s.n, s.c, s.d, s.start, s.end, minutesToHHMM(s.minutes)];
+        tds.forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(thead); table.appendChild(tbody);
+
+      const summaryCard = document.createElement('div'); summaryCard.className = 'card';
+      const sumTable = document.createElement('table'); sumTable.className = 'table';
+      const sth = document.createElement('thead'); sth.innerHTML = '<tr><th>نام</th><th>کد</th><th>مجموع مدت</th></tr>';
+      const stb = document.createElement('tbody');
+      Object.entries(perPerson).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([k, mins]) => {
+        const [c, n] = k.split('|'); const tr = document.createElement('tr');
+        [n, c, minutesToHHMM(mins)].forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+        stb.appendChild(tr);
+      });
+      sumTable.appendChild(sth); sumTable.appendChild(stb);
+
+      container.appendChild(document.createElement('div')).innerHTML = `<div class="card"><strong>بازه زمانی:</strong> ${fr || '---'} تا ${to || '---'}</div>`;
+      container.appendChild(table);
+      const sumWrapper = document.createElement('div'); sumWrapper.className = 'card'; sumWrapper.appendChild(sumTable); container.appendChild(sumWrapper);
+    };
+
+    const exportExcelList = () => {
+      if (!currentFilteredData.length) { toast('رکوردی برای خروجی نیست'); return; }
+      try {
+        const dataForExcel = currentFilteredData.map(r => ({ 'نام': r.n, 'کد پرسنلی': r.c, 'نوع': r.t, 'تاریخ': r.d, 'ساعت': r.tm, 'توضیحات': r.note || '' }));
+        const ws = XLSX.utils.json_to_sheet(dataForExcel);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'گزارش');
+        XLSX.writeFile(wb, 'گزارش.xlsx');
+        toast('فایل اکسل دانلود شد');
+      } catch (e) { console.error('خطا در تولید اکسل:', e); toast('خطا در تولید فایل اکسل'); }
+    };
+
+    const exportExcelStats = () => {
+      const fr = document.querySelector('#statFrom').value;
+      const to = document.querySelector('#statTo').value;
+      const sessions = pairWorkSessions(currentFilteredData);
+      if (!sessions.length) { toast('رکوردی برای خروجی نیست'); return; }
+      try {
+        const details = sessions.map(s => ({ 'نام': s.n, 'کد': s.c, 'تاریخ': s.d, 'شروع': s.start, 'پایان': s.end, 'مدت (دقیقه)': s.minutes, 'مدت (HH:MM)': minutesToHHMM(s.minutes) }));
+        const ws1 = XLSX.utils.json_to_sheet(details);
+        const per = {};
+        sessions.forEach(s => { const k = s.c + '|' + s.n; per[k] = (per[k] || 0) + s.minutes; });
+        const summary = Object.entries(per).map(([k, mins]) => { const [c, n] = k.split('|'); return { 'نام': n, 'کد': c, 'مجموع (دقیقه)': mins, 'مجموع (HH:MM)': minutesToHHMM(mins) }; });
+        const ws2 = XLSX.utils.json_to_sheet(summary);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws1, 'جزئیات');
+        XLSX.utils.book_append_sheet(wb, ws2, 'خلاصه');
+        XLSX.writeFile(wb, `آمار_${fr || 'از'}-${to || 'تا'}.xlsx`);
+        toast('فایل اکسل دانلود شد');
+      } catch (e) { console.error('خطا در تولید اکسل:', e); toast('خطا در تولید فایل اکسل'); }
+    };
+
+    const exportImageList = () => {
+      if (!currentFilteredData.length) { toast('رکوردی برای خروجی نیست'); return; }
+      try {
+        const listResult = document.querySelector('#listResult');
+        html2canvas(listResult).then(canvas => { const imgData = canvas.toDataURL('image/png'); const link = document.createElement('a'); link.download = 'گزارش.png'; link.href = imgData; document.body.appendChild(link); link.click(); document.body.removeChild(link); toast('تصویر گزارش دانلود شد'); });
+      } catch (e) { console.error('خطا در تولید تصویر:', e); toast('خطا در تولید تصویر گزارش'); }
+    };
+
+    const exportImageStats = () => {
+      const statContainer = document.querySelector('#stats');
+      try {
+        html2canvas(statContainer).then(canvas => { const imgData = canvas.toDataURL('image/png'); const img = document.querySelector('#reportImage'); img.src = imgData; img.classList.remove('hidden'); const link = document.createElement('a'); link.download = 'آمار.png'; link.href = imgData; document.body.appendChild(link); link.click(); document.body.removeChild(link); toast('تصویر آمار دانلود شد'); });
+      } catch (e) { console.error('خطا در تولید تصویر:', e); toast('خطا در تولید تصویر آمار'); }
+    };
+
+    const resetAll = () => {
+      if (confirm('آیا از حذف تمامی داده‌ها اطمینان دارید؟')) {
+        records = []; names = []; codes = []; people = [];
+        ['records','names','codes','people'].forEach(k => localStorage.removeItem(k));
+        renderAlarms(); updateSuggestions();
+        document.querySelector('#listResult').innerHTML = '';
+        document.querySelector('#statResult').innerHTML = '';
+        document.querySelector('#statKpi').innerHTML = '';
+        toast('تمامی داده‌ها پاک شد');
+        attemptPushIfAutoSync();
+      }
+    };
+
+    // ===== GitHub Sync =====
+    const GH_DEFAULTS = { owner:'', repo:'', branch:'main', dir:'data', saveToken:false, token:'', autoSync:false, pullOnLoad:false };
+    let ghSettings = null; // in-memory settings
+    let ghTokenMemory = '';
+    let ghShas = JSON.parse(localStorage.getItem('ghShas') || '{}');
+
+    const loadGhSettings = () => {
+      const s = JSON.parse(localStorage.getItem('ghSettings') || 'null') || GH_DEFAULTS;
+      ghSettings = { ...GH_DEFAULTS, ...s };
+      if (!ghSettings.saveToken) ghSettings.token = '';
+      const owner = document.querySelector('#ghOwner'); if (owner) owner.value = ghSettings.owner;
+      const repo = document.querySelector('#ghRepo'); if (repo) repo.value = ghSettings.repo;
+      const branch = document.querySelector('#ghBranch'); if (branch) branch.value = ghSettings.branch;
+      const dir = document.querySelector('#ghDir'); if (dir) dir.value = ghSettings.dir;
+      const token = document.querySelector('#ghToken'); if (token) token.value = '';
+      const saveChk = document.querySelector('#ghSaveToken'); if (saveChk) saveChk.checked = !!ghSettings.saveToken;
+      const aSync = document.querySelector('#ghAutoSync'); if (aSync) aSync.checked = !!ghSettings.autoSync;
+      const pLoad = document.querySelector('#ghPullOnLoad'); if (pLoad) pLoad.checked = !!ghSettings.pullOnLoad;
+    };
+
+    const saveGhSettings = () => {
+      const s = {
+        owner: document.querySelector('#ghOwner').value.trim(),
+        repo: document.querySelector('#ghRepo').value.trim(),
+        branch: document.querySelector('#ghBranch').value.trim() || 'main',
+        dir: document.querySelector('#ghDir').value.trim() || 'data',
+        token: document.querySelector('#ghToken').value.trim(),
+        saveToken: document.querySelector('#ghSaveToken').checked,
+        autoSync: document.querySelector('#ghAutoSync').checked,
+        pullOnLoad: document.querySelector('#ghPullOnLoad').checked
+      };
+      ghTokenMemory = s.saveToken ? '' : s.token;
+      const persist = { ...s, token: s.saveToken ? s.token : '' };
+      localStorage.setItem('ghSettings', JSON.stringify(persist));
+      ghSettings = { ...persist };
+      if (!ghSettings.saveToken) document.querySelector('#ghToken').value = '';
+      toast('تنظیمات ذخیره شد');
+    };
+
+    const ghHeaders = () => {
+      const token = (ghSettings && ghSettings.saveToken && ghSettings.token) ? ghSettings.token : ghTokenMemory;
+      const h = { 'Accept':'application/vnd.github+json' };
+      if (token) h['Authorization'] = 'Bearer ' + token;
+      return h;
+    };
+    const ghBase = () => `https://api.github.com/repos/${ghSettings.owner}/${ghSettings.repo}/contents`;
+    const filePath = (name) => {
+      const d = (ghSettings.dir || '').replace(/^\/+|\/+$/g,'');
+      return d ? `${d}/${name}` : name;
+    };
+    const encodeB64 = (str) => {
+      const enc = new TextEncoder();
+      const bytes = enc.encode(str);
+      let binary = '';
+      bytes.forEach(b => binary += String.fromCharCode(b));
+      return btoa(binary);
+    };
+    const decodeB64 = (b64) => {
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+      return new TextDecoder().decode(bytes);
+    };
+
+    const ghGetFile = async (name) => {
+      const url = `${ghBase()}/${encodeURIComponent(filePath(name))}?ref=${encodeURIComponent(ghSettings.branch)}`;
+      const res = await fetch(url, { headers: ghHeaders() });
+      if (res.status === 404) return { content: null, sha: null };
+      if (!res.ok) throw new Error('GET ' + name + ' ' + res.status);
+      const json = await res.json();
+      const text = decodeB64(json.content || '');
+      return { content: JSON.parse(text || 'null'), sha: json.sha };
+    };
+
+    const ghPutFile = async (name, data) => {
+      const path = filePath(name);
+      const existingSha = ghShas[path] || (await ghGetFile(name)).sha || undefined;
+      const url = `${ghBase()}/${encodeURIComponent(path)}`;
+      const body = {
+        message: `Update ${path} via app` ,
+        content: encodeB64(JSON.stringify(data, null, 2)),
+        branch: ghSettings.branch
+      };
+      if (existingSha) body.sha = existingSha;
+      const res = await fetch(url, { method:'PUT', headers: { ...ghHeaders(), 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error('PUT ' + name + ' ' + res.status);
+      const json = await res.json();
+      ghShas[path] = json.content.sha;
+      localStorage.setItem('ghShas', JSON.stringify(ghShas));
+      return json.content.sha;
+    };
+
+    const pushToGithub = async () => {
+      try {
+        requireGh();
+        toast('در حال ارسال به گیت‌هاب...');
+        await Promise.all([
+          ghPutFile('records.json', records),
+          ghPutFile('names.json', names),
+          ghPutFile('codes.json', codes),
+          ghPutFile('people.json', people)
+        ]);
+        toast('✓ همگام‌سازی با گیت‌هاب انجام شد');
+      } catch (e) {
+        console.error(e);
+        toast('خطا در همگام‌سازی با گیت‌هاب');
+      }
+    };
+
+    const pullFromGithub = async () => {
+      try {
+        requireGh();
+        toast('در حال دریافت از گیت‌هاب...');
+        const [r,nm,cd,pp] = await Promise.all([
+          ghGetFile('records.json'),
+          ghGetFile('names.json'),
+          ghGetFile('codes.json'),
+          ghGetFile('people.json')
+        ]);
+        const apply = (resp, key, fallback) => {
+          if (resp && resp.content) {
+            if (key === 'records') records = resp.content; if (key === 'names') names = resp.content; if (key === 'codes') codes = resp.content; if (key === 'people') people = resp.content;
+            ghShas[filePath(key + '.json')] = resp.sha || null;
+          } else if (fallback) {
+            // keep current
+          }
+        };
+        apply(r,'records',true); apply(nm,'names',true); apply(cd,'codes',true); apply(pp,'people',true);
+        DB.save('records', records); DB.save('names', names); DB.save('codes', codes); DB.save('people', people);
+        localStorage.setItem('ghShas', JSON.stringify(ghShas));
+        updateSuggestions(); renderAlarms();
+        if (document.querySelector('#list').classList.contains('active')) showList();
+        if (document.querySelector('#stats').classList.contains('active')) showStats();
+        toast('✓ داده‌ها از گیت‌هاب بارگذاری شد');
+      } catch (e) {
+        console.error(e);
+        toast('خطا در دریافت از گیت‌هاب');
+      }
+    };
+
+    const requireGh = () => {
+      if (!ghSettings) loadGhSettings();
+      const token = (ghSettings.saveToken && ghSettings.token) ? ghSettings.token : ghTokenMemory;
+      if (!ghSettings.owner || !ghSettings.repo || !ghSettings.branch) throw new Error('GitHub settings incomplete');
+      if (!token) throw new Error('GitHub token missing');
+    };
+
+    let pushDebounce = null;
+    const attemptPushIfAutoSync = () => {
+      if (!ghSettings) loadGhSettings();
+      if (!ghSettings || !ghSettings.autoSync) return;
+      clearTimeout(pushDebounce);
+      pushDebounce = setTimeout(() => { pushToGithub(); }, 1200);
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initDatePickers();
+      updateSuggestions();
+      wirePersonInputs();
+      renderAlarms();
+      applyLiveSearch();
+      loadGhSettings();
+      if (ghSettings && ghSettings.pullOnLoad) { pullFromGithub(); }
+    });
+  </script>
+</body>
+</html>
+
